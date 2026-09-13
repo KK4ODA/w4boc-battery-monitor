@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.0.1] — 2026-09-13
+
+### Fixed
+- Configuration errors exit with code 4 so the launcher waits 30 s between
+  retries instead of restarting every 10 s.
+- A clear message (and exit code 4) when the dashboard port is already in
+  use, e.g. because the v1 dashboard is still running.
+- `SHA256SUMS.txt` in releases is written with LF line endings so
+  `sha256sum -c` works on any platform.
+
 ## [2.0.0] — 2026-09-13
 
 First release from this repository. Rewrite of the April 2026 monitor into a
