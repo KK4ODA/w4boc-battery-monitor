@@ -1,11 +1,19 @@
 {% macro badge(cls, label) %}<span class="badge badge-{{ cls }}">{{ label }}</span>{% endmacro %}
 
+{% if final_since %}
+<div class="banner bad final">
+  BATTERY NEARLY EXHAUSTED (since {{ final_since }}){% if runtime %} — {{ runtime.text }} left{% endif %}.
+  The monitor PC runs from this battery: monitoring stops when the BMS cuts off.
+</div>
+{% endif %}
+
 <div class="snap-row">
   <div class="big-card mains-{{ mains.state }}">
     <div class="label">Mains power</div>
     {% if mains.state == 'off' %}
       <div class="value bad">LOST</div>
       <div class="sub">for {{ mains.since_ago }} · since {{ mains.since_local }}</div>
+      {% if runtime %}<div class="sub warn">{{ runtime.text }} of battery left</div>{% endif %}
     {% elif mains.state == 'on' %}
       <div class="value ok">ON</div>
       <div class="sub">for {{ mains.since_ago }} · last outage: {{ mains.last_outage }}</div>
@@ -30,6 +38,7 @@
       {{ "%+.0f"|format(bms.power_w) }} W ·
       {% if bms.temp_c is not none %}{{ "%.1f"|format(bms.temp_c) }} °C{% else %}—{% endif %}
     </div>
+    {% if runtime and mains.state != 'off' %}<div class="sub warn">discharging · {{ runtime.text }} left</div>{% endif %}
   </div>
   {% else %}
   <div class="big-card"><div class="label">BMS</div><div class="value bad">no data</div></div>

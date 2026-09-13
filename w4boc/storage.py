@@ -147,6 +147,16 @@ class Storage:
         ).fetchall()
         return [self._bms_row_to_dict(r) for r in rows]
 
+    def avg_current_since(self, since: datetime) -> tuple[float | None, int]:
+        """(average pack current, sample count) over samples newer than `since`."""
+        row = self._exec(
+            "SELECT AVG(pack_current), COUNT(pack_current) FROM bms_samples WHERE ts >= ?",
+            (since.astimezone(timezone.utc).isoformat(timespec="seconds"),),
+        ).fetchone()
+        if not row or row[0] is None:
+            return None, 0
+        return float(row[0]), int(row[1])
+
     def soc_at_or_before(self, when: datetime) -> int | None:
         row = self._exec(
             "SELECT soc_pct FROM bms_samples WHERE ts <= ? ORDER BY ts DESC LIMIT 1",

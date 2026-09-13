@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Flask, jsonify, render_template, request
 
-from . import __version__, autostart, config, mailer
+from . import __version__, autostart, battery, config, mailer
 from . import settings as S
 from .context import AppContext, EXIT_RESTART
 from .mains import fmt_duration
@@ -286,10 +286,13 @@ def create_app(ctx: AppContext) -> Flask:
             m["last_outage"] = "none recorded"
         ps = ctx.power_status
         m["ups"] = (ps.source if ps else "n/a")
+        rt = battery.estimate_runtime(ctx.storage)
+        final_since = ctx.storage.get_state("active_battery_final") or ""
 
         return render_template(
             "partials/snapshot.html",
             bms=bms_d, chg=chg_d, mains=m, cfg=config,
+            runtime=rt, final_since=_local(final_since) if final_since else "",
         )
 
     @app.route("/partials/events")
@@ -497,10 +500,14 @@ def create_app(ctx: AppContext) -> Flask:
         """Machine-readable summary (handy for scripts / uptime checks)."""
         bms = ctx.storage.latest_bms()
         chg = ctx.storage.latest_charger()
+        rt = battery.estimate_runtime(ctx.storage)
         return jsonify({
             "version": __version__,
             "uptime_s": int(ctx.uptime_s()),
             "mains": ctx.mains.summary() if ctx.mains else None,
+            "runtime": ({"hours": round(rt.hours, 2), "avg_current_a": round(rt.avg_current_a, 2),
+                         "residual_ah": rt.residual_ah, "text": rt.text} if rt else None),
+            "battery_final": bool(ctx.storage.get_state("active_battery_final")),
             "bms": bms, "charger": chg,
             "updater": ctx.updater.snapshot() if ctx.updater else None,
         })

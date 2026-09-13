@@ -144,3 +144,6 @@ button.inline { margin-left: 12px; padding: 2px 10px; font-size: 12px; }
 .switch .slider:before { content: ""; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px; background: var(--muted); border-radius: 50%; transition: .15s; }
 .switch input:checked + .slider { background: rgba(63, 185, 80, 0.25); border-color: var(--green); }
 .switch input:checked + .slider:before { transform: translateX(22px); background: var(--green); }
+
+.banner.final { border: 1px solid var(--red); border-radius: 8px; margin-bottom: 16px; font-weight: 600; }
+.big-card .sub.warn { color: var(--amber); }

@@ -101,6 +101,8 @@ Subject prefixes: **URGENT** (act now), **NOTICE** (worth knowing),
 | `URGENT: BMS protection: …` | BMS tripped a protection |
 | `URGENT: charger error: …` | Victron reports an error |
 | `URGENT: battery X C` | Temp > 35 °C or < 0 °C |
+| `URGENT: battery nearly exhausted — SoC 9%, 12.31 V, ≈ 4h 10m left; monitoring stops when the BMS cuts off` | SoC ≤ `battery_final_soc_pct` (10) or, while discharging, pack ≤ `battery_final_voltage_v` (12.0 V). Sent once; clears 5 points / 0.3 V higher. Also an APRS status `>BATTERY LOW 12.31V 9% ~4h10m`. |
+| `RESOLVED: battery recovered — SoC 16%, 13.30 V` | The above cleared (charging again). |
 | `NOTICE: BLE watchdog elevated — N restarts in 24 h` | ≥ `watchdog_email_threshold` BMS-silence restarts in 24 h |
 | `NOTICE: monitor updated to vX.Y.Z` | Auto-update installed and verified |
 | `NOTICE: update to vX failed — rolled back` | New version did not stay up; previous restored |
@@ -134,8 +136,18 @@ Sequence during a real outage (default settings):
    confidence): URGENT email, DEGRADED mode, APRS status packet + immediate
    position/telemetry frame, ` MAINS LOST` in the position comment, red
    *Mains power* card. The outage is dated from T+0.
-4. Charger advertises again → **RESTORED**: RESOLVED email with the outage
-   duration, APRS status packet, history row on the Power page.
+4. While it lasts: the email, the daily digest, the Mains card and
+   `/api/status` carry an **estimated runtime** — residual Ah from the BMS
+   divided by the average draw over the last 10 minutes (e.g. "≈ 2d 8h at
+   4.6 A"). The monitor PC is powered from the same battery, so this is
+   also how long monitoring continues. `URGENT: SoC …, below 30%` follows
+   in due course, then the **final warning** (SoC ≤ 10 % or ≤ 12.0 V) —
+   the last email you will get before the BMS opens its discharge FET and
+   the PC goes dark with the repeater.
+5. Charger advertises again → **RESTORED**: RESOLVED email with the outage
+   duration, APRS status packet, history row on the Power page. If the PC
+   had died, it boots when mains returns and additionally sends
+   `NOTICE: PC lost power for …`.
 
 Other paths:
 

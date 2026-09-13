@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 
 from . import config
 from . import mailer
+from .battery import estimate_runtime
 from .storage import Storage
 
 log = logging.getLogger(__name__)
@@ -58,12 +59,13 @@ def _send(s: Storage, kind: str, period: timedelta):
     tail = f", {n_urgent} alert" + ("s" if n_urgent != 1 else "") if n_urgent else ", no events"
     subject = f"[{config.SITE_NAME}] {kind} summary — {soc_now}% SoC{tail}"
 
-    body = _body(kind, period, stats, chg_time, events, bms, chg, mode)
+    body = _body(kind, period, stats, chg_time, events, bms, chg, mode,
+                 runtime=estimate_runtime(s))
     sent = mailer.send(subject, body)
     s.log_event("digest_sent", "info", f"{kind.lower()}: sent={sent}; {subject}")
 
 
-def _body(kind, period, stats, chg_time, events, bms, chg, mode) -> str:
+def _body(kind, period, stats, chg_time, events, bms, chg, mode, runtime=None) -> str:
     lines = [
         f"Site: {config.SITE_NAME}",
         f"Digest: {kind.lower()} ({period.days}-day window)",
@@ -85,6 +87,8 @@ def _body(kind, period, stats, chg_time, events, bms, chg, mode) -> str:
         lines += [
             f"Charger: {chg['state']}, {chg['voltage']:.1f} V @ {chg['current']:.1f} A, err={chg['error']}",
         ]
+    if runtime is not None:
+        lines.append(f"Estimated runtime: {runtime.text} (monitoring stops when the BMS cuts off)")
 
     lines += ["", "=== BMS over period ==="]
     if stats and stats.get("n"):

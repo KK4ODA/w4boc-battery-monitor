@@ -132,6 +132,12 @@ cell_spread_mv = 30
 temp_high_c = 35
 # Battery temperature low (°C).
 temp_low_c = 0
+# Final warning at SoC ≤ (%). Last email before the BMS cuts the load (and this PC) off. Clears once SoC is 5 points higher.
+battery_final_soc_pct = 10
+# Final warning at pack voltage ≤ (V). While discharging. Clears 0.3 V higher.
+battery_final_voltage_v = 12.0
+# APRS status packet with the final warning. '>BATTERY LOW 12.31V 9% ~4h10m'.
+battery_final_aprs_status = true
 # BLE restarts per 24 h before emailing.
 watchdog_email_threshold = 12
 # Daily digest hour (local). Only while DEGRADED.

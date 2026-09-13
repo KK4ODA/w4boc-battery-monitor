@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 
 from . import config
 from . import mailer
+from .battery import RuntimeEstimate, estimate_runtime
 from .mains import fmt_duration
 from .storage import Storage
 
@@ -90,13 +91,32 @@ def _track(s: Storage, trigger: str, active: bool,
                     f"{trigger}: sent={sent}; {resolve_subject}")
 
 
-def evaluate(s: Storage, mains: MainsView | None = None):
+def _track_hyst(s: Storage, trigger: str, on: bool, off: bool,
+                fire_subject: str, resolve_subject: str, body: str,
+                severity: str = "urgent") -> str | None:
+    """Like _track() but with hysteresis: `on` raises, `off` clears, neither
+    keeps the current state. Returns 'fired' | 'resolved' | None."""
+    flag_key = f"active_{trigger}"
+    was_active = bool(s.get_state(flag_key))
+    if on and not was_active:
+        _track(s, trigger, True, fire_subject, resolve_subject, body, severity)
+        return "fired"
+    if off and was_active:
+        _track(s, trigger, False, fire_subject, resolve_subject, body, severity)
+        return "resolved"
+    return None
+
+
+def evaluate(s: Storage, mains: MainsView | None = None) -> list[str]:
+    """One evaluator pass. Returns APRS status texts to broadcast (usually none)."""
     mains = mains or MainsView()
     bms = s.latest_bms()
     chg = s.latest_charger()
     now = _utcnow()
-    body = _urgent_body(bms, chg, mains)
+    runtime = estimate_runtime(s, now=now)
+    body = _urgent_body(bms, chg, mains, runtime)
     site = config.SITE_NAME
+    statuses: list[str] = []
 
     # ---- edge-triggered (fire + resolve) ----
 
@@ -139,6 +159,23 @@ def evaluate(s: Storage, mains: MainsView | None = None):
                    f"[{site}] RESOLVED: battery temperature back to {t:.1f} C",
                    body)
 
+    # Final warning: the monitor PC runs from this battery, so this is the
+    # last email before the BMS cuts everything (including us) off.
+    if bms and soc is not None and bms.get("pack_voltage") is not None:
+        v = bms["pack_voltage"]
+        discharging = (bms.get("pack_current") or 0) < 0
+        on = soc <= config.BATTERY_FINAL_SOC or (discharging and v <= config.BATTERY_FINAL_VOLTAGE)
+        off = soc >= config.BATTERY_FINAL_SOC + 5 and v > config.BATTERY_FINAL_VOLTAGE + 0.3
+        left = f", {runtime.text} left" if runtime else ""
+        result = _track_hyst(
+            s, "battery_final", on, off,
+            f"[{site}] URGENT: battery nearly exhausted — SoC {soc}%, {v:.2f} V{left}; "
+            f"monitoring stops when the BMS cuts off",
+            f"[{site}] RESOLVED: battery recovered — SoC {soc}%, {v:.2f} V",
+            body)
+        if result == "fired" and config.BATTERY_FINAL_APRS:
+            statuses.append(f"BATTERY LOW {v:.2f}V {soc}%" + (f" {runtime.short}" if runtime else ""))
+
     chg_err = chg.get("error") if chg else None
     chg_error_active = bool(chg_err and chg_err not in ("", "NO_ERROR"))
     _track(s, "charger_error", chg_error_active,
@@ -180,6 +217,7 @@ def evaluate(s: Storage, mains: MainsView | None = None):
                                 f"{prev_state} -> {new_state}")
 
     _update_mode(s, bms, mains, now)
+    return statuses
 
 
 def _degraded_cause(bms, mains: MainsView) -> str | None:
@@ -231,7 +269,8 @@ def _update_mode(s: Storage, bms, mains: MainsView, now):
                     f"recovered to NORMAL (cause clear for {mins} min)")
 
 
-def _urgent_body(bms, chg, mains: MainsView | None = None) -> str:
+def _urgent_body(bms, chg, mains: MainsView | None = None,
+                 runtime: RuntimeEstimate | None = None) -> str:
     lines = [f"Site: {config.SITE_NAME}", ""]
     if mains is not None:
         state = "LOST" if mains.lost else "on"
@@ -240,6 +279,13 @@ def _urgent_body(bms, chg, mains: MainsView | None = None) -> str:
         if mains.reason:
             lines.append(f"  {mains.reason} [{mains.confidence} confidence]")
         lines.append("")
+    if runtime is not None:
+        lines += [
+            f"Estimated runtime: {runtime.text} ({runtime.residual_ah:.0f} Ah residual, "
+            f"average of the last {runtime.window_min} min). The monitor PC runs from this "
+            f"battery, so monitoring stops when the BMS cuts off.",
+            "",
+        ]
     if bms:
         temp = f"{bms['temp_c']:.1f} °C" if bms.get("temp_c") is not None else "—"
         lines += [

@@ -36,7 +36,8 @@ disappears by itself.
 | Shows | Meaning |
 | --- | --- |
 | **ON** for 3d 4h · last outage: 2026-09-01 … · 1h 23m | Normal. The small grey line is the detector's current reasoning ("charger advertising (12s ago)"). |
-| **LOST** for 14m · since 2026-09-13 04:22 | Outage in progress, dated from when the charger went silent. The card turns red and a MAINS LOST badge appears under *Last seen*. The email has already gone out. |
+| **LOST** for 14m · since 2026-09-13 04:22 · ≈ 2d 8h at 4.6 A of battery left | Outage in progress, dated from when the charger went silent, with the estimated time until the BMS cuts the load (and this monitor) off. The card turns red and a MAINS LOST badge appears under *Last seen*. The email has already gone out. |
+| red banner **BATTERY NEARLY EXHAUSTED** | SoC ≤ 10 % (or ≤ 12.0 V while discharging). The final-warning email has been sent; monitoring stops when the BMS cuts off. |
 | **unknown** | Just started; waiting for the first charger sample. |
 
 Note the ~11 minute delay between a real outage and the LOST verdict — the

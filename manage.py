@@ -34,6 +34,7 @@ KNOWN_TRIGGERS = [
     "cell_imbalance",
     "temp_high",
     "temp_low",
+    "battery_final",
 ]
 
 

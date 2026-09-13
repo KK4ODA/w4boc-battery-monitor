@@ -198,6 +198,9 @@ CELL_SPREAD_MV: int = _get("alerts", "cell_spread_mv")
 TEMP_HIGH_C: float = _get("alerts", "temp_high_c")
 TEMP_LOW_C: float = _get("alerts", "temp_low_c")
 WATCHDOG_EMAIL_THRESHOLD: int = _get("alerts", "watchdog_email_threshold")
+BATTERY_FINAL_SOC: int = _get("alerts", "battery_final_soc_pct")
+BATTERY_FINAL_VOLTAGE: float = _get("alerts", "battery_final_voltage_v")
+BATTERY_FINAL_APRS: bool = _get("alerts", "battery_final_aprs_status")
 
 # ---- dashboard ----
 DASH_HOST: str = _get("dashboard", "host")

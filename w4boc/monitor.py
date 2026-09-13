@@ -23,7 +23,7 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 
-from . import alerts, config, digest, mailer, power
+from . import alerts, battery, config, digest, mailer, power
 from .context import AppContext, EXIT_RESTART
 from .mains import MainsInputs, fmt_duration
 
@@ -197,6 +197,9 @@ def _status_text(ctx: AppContext, transition: str) -> str:
             bits.append(f"{bms['pack_current']:+.1f}A")
     tail = " ".join(bits)
     if transition == "lost":
+        rt = battery.estimate_runtime(ctx.storage)
+        if rt:
+            tail = f"{tail} {rt.short}".strip()
         return f"AC MAINS LOST {tail}".strip()
     last = ctx.storage.latest_mains_event()
     dur = fmt_duration(last["outage_s"]) if last and last.get("outage_s") is not None else "?"
@@ -216,7 +219,8 @@ def evaluate_once(ctx: AppContext):
         confidence=assessment.confidence,
         outage_s=ctx.mains.last_outage_s if transition == "restored" else None,
     )
-    alerts.evaluate(s, view)
+    for text in alerts.evaluate(s, view):
+        ctx.aprs_bus.queue_status(text)
     digest.maybe_send_scheduled(s)
     if transition:
         log.warning(f"mains transition: {transition} — {assessment.reason}")

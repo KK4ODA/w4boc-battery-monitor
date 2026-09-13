@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.2.0] — 2026-09-13
+
+### Added
+- **Runtime estimate** while the battery carries the load: residual Ah (BMS)
+  ÷ average draw over the last 10 min. Shown on the Mains card (during an
+  outage) and the Pack card (whenever discharging), in every alert email
+  body, in the daily digest, in `/api/status`, and appended to the APRS
+  `>AC MAINS LOST …` status packet (`~58h`). The monitor PC runs from the
+  same battery, so this is also the time until monitoring stops.
+- **Final warning**: `URGENT: battery nearly exhausted — SoC 9%, 12.31 V,
+  ≈ 4h 10m left; monitoring stops when the BMS cuts off` at SoC ≤
+  `battery_final_soc_pct` (10) or, while discharging, pack ≤
+  `battery_final_voltage_v` (12.0 V); sent once with hysteresis (clears 5
+  points / 0.3 V higher), RESOLVED on recovery, optional APRS status
+  `>BATTERY LOW 12.31V 9% ~4h10m`, red banner on the Live page. All three
+  knobs are on the Settings page.
+- `manage.py reset-alert battery_final`.
+
 ## [2.1.0] — 2026-09-13
 
 ### Added
