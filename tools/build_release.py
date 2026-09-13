@@ -53,7 +53,7 @@ def build(out_dir: Path) -> tuple[Path, Path]:
             z.write(p, arc)
     digest = hashlib.sha256(zip_path.read_bytes()).hexdigest()
     sums = out_dir / "SHA256SUMS.txt"
-    sums.write_text(f"{digest}  {zip_path.name}\n", encoding="utf-8")
+    sums.write_text(f"{digest}  {zip_path.name}\n", encoding="utf-8", newline="\n")
     return zip_path, sums
 
 
