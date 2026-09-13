@@ -29,7 +29,7 @@ def no_email(monkeypatch):
     from w4boc import mailer
     sent = []
 
-    def fake_send(subject, body, recipients=None):
+    def fake_send(subject, body, recipients=None, **kw):
         sent.append((subject, body))
         return True
     monkeypatch.setattr(mailer, "send", fake_send)

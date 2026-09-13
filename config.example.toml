@@ -1,121 +1,169 @@
-# W4BOC Battery Monitor configuration — copy to config.toml and edit.
-#
-# Real secrets (Victron BLE encryption key, Gmail app password, optional
-# GitHub token) live in secrets.toml — a sibling file that is never committed
-# or included in release zips. This file is safe to share.
-#
-# Every key has a built-in default; you only need the sections you change.
-# The auto-updater never overwrites config.toml, so new versions keep working
-# with an older config file.
+# W4BOC Battery Monitor — config.toml
+# Edit here or on the dashboard's Settings page (which rewrites this file,
+# keeping any keys it does not know). Secrets live in secrets.toml.
+# Changes take effect after a monitor restart.
+
+[site]
+# Identity, sampling and data retention.
+# Site name. Used in email subjects, APRS comments and the dashboard title.
+name = "W4BOC"
+# Time zone. IANA name, e.g. America/New_York.
+timezone = "America/New_York"
+# Database file. SQLite file, relative to the application folder.
+db_path = "monitor.db"
+# BMS poll interval (s). One Bluetooth connection per poll; be gentle on the BMS.
+bms_sample_period_s = 60
+# Charger sample interval (s). The charger broadcasts ~1 Hz; a sample is stored at least this often, sooner on significant change.
+charger_sample_period_s = 60
+# Keep raw samples (days). Full resolution for this many days.
+retention_raw_days = 7
+# Keep per-minute samples (days). Then one sample per minute until this age.
+retention_minute_days = 30
+# Keep hourly samples (days). Then one per hour; older samples are deleted.
+retention_max_days = 365
+# Instance lock port. Local TCP port used to make sure only one monitor runs.
+instance_lock_port = 50001
+# Start with Windows. Keep a Startup-folder shortcut to run.bat (created at startup if missing). The switch on the Settings page applies immediately.
+start_with_windows = false
 
 [bms]
-# JBD/Xiaoxiang BMS inside the LiFePO4 pack (Bluetooth MAC, from tools/scan.py)
+# JBD/Xiaoxiang BMS inside the LiFePO4 pack (find the MAC with tools/scan.py).
+# BMS Bluetooth MAC.
 mac = "AA:BB:CC:DD:EE:FF"
+# BMS name. Informational.
 name = "DP04S007L4S200A"
 
 [victron]
-# Blue Smart IP22 charger Bluetooth MAC (from tools/scan.py)
+# Victron Blue Smart IP22. The encryption key comes from VictronConnect → Product Info → Encryption data.
+# Charger Bluetooth MAC.
 mac = "AA:BB:CC:DD:EE:00"
-# encryption_key is in secrets.toml
-
-[site]
-name = "W4BOC"
-timezone = "America/New_York"
-db_path = "monitor.db"
-# Minimum interval between charger samples (s). Charger broadcasts ~1 Hz; we
-# only persist when state/voltage/current changes significantly OR this many
-# seconds have passed — keeps the DB compact.
-charger_sample_period_s = 60
-# BMS poll interval (s). One GATT connection per poll, gentle on the BMS.
-bms_sample_period_s = 60
+# encryption_key lives in secrets.toml
 
 [email]
-# app_password is in secrets.toml — leave it blank there to disable email
-# entirely (monitor still runs, writes DB, logs alerts to stdout).
+# Gmail SMTP with an app password. Leave the password blank to disable email.
+# Sender (Gmail address).
 sender = "you@gmail.com"
+# Recipients. One address per line.
 recipients = [
   "operator1@example.com",
   "operator2@example.com",
 ]
+# SMTP server.
+smtp_host = "smtp.gmail.com"
+# SMTP port. 587 = STARTTLS.
+smtp_port = 587
+# app_password lives in secrets.toml
 
 [aprs]
+# RF via soundmodem's AGWPE server and optional APRS-IS uplink. Header/telemetry formats are fixed; only cadence and identity are settings.
+# APRS enabled.
 enabled = true
-# RF transmission goes through soundmodem's AGWPE TCP server, bypassing YAAC.
-# YAAC silently refused to cross-port-route ExtMsgSrc packets to RF, even
-# though APRS-IS uplink (mostly) worked. Direct AGW gives full control.
-agw_host = "localhost"
-agw_port = 8000
-# APRS-IS uplink (optional). Set passcode to 0 to disable — needed for
-# fully-offline operation. Passcode is a deterministic hash of the callsign
-# (see http://apps.magicbug.co.uk/passcode/ or any of the standard generators).
-aprsis_host = "rotate.aprs2.net"
-aprsis_port = 14580
-aprsis_passcode = 0
+# Callsign-SSID.
 callsign = "W4BOC-1"
-path = "WIDE1-1,WIDE2-1"       # digipeat path appended on RF UI frames
-lat = 33.805520                # DeKalb ARES repeater site
-lon = -84.146500
-symbol_table = "I"             # overlay letter
-symbol_code = "#"              # digipeater symbol
-# Cadence (minutes)
-data_interval_min = 10         # T#NNN data frames
-headers_interval_min = 60      # PARM/UNIT/EQNS/BITS header set
-position_interval_min = 15     # position+comment with live readings
-# Whether to emit our own position packets. Off when sharing a callsign with
-# YAAC's own beacon (which already publishes position).
+# AGWPE host. soundmodem's AGWPE TCP server (we bypass YAAC, which refused to RF-route our packets).
+agw_host = "localhost"
+# AGWPE port.
+agw_port = 8000
+# APRS-IS server.
+aprsis_host = "rotate.aprs2.net"
+# APRS-IS port.
+aprsis_port = 14580
+# APRS-IS passcode. 0 disables the Internet uplink (fully offline operation). Standard passcode generators apply.
+aprsis_passcode = 0
+# Digipeat path. Comma-separated, appended to RF frames only.
+path = "WIDE1-1,WIDE2-1"
+# Latitude. Decimal degrees, north positive.
+lat = 33.80552
+# Longitude. Decimal degrees, east positive.
+lon = -84.1465
+# Symbol table. One character ('/', '\' or an overlay letter).
+symbol_table = "I"
+# Symbol code. One character ('#' = digipeater).
+symbol_code = "#"
+# Destination (tocall). APZ = experimental. Changing this changes every packet — leave it.
+tocall = "APZBAT"
+# Telemetry project name. Sent in the BITS header. Blank = '<site name> Battery'.
+project_name = ""
+# Position comment prefix. Blank = '<site name> batt'. The comment becomes e.g. 'W4BOC batt 13.78V 100% 23C'.
+comment_prefix = ""
+# Telemetry data every (min). T#NNN frames.
+data_interval_min = 10
+# Telemetry headers every (min). PARM/UNIT/EQNS/BITS set.
+headers_interval_min = 60
+# Position every (min).
+position_interval_min = 15
+# Send position packets. Off when sharing the callsign with a YAAC beacon that already sends it.
 send_position = true
 
 [mains]
-# Mains (AC) power detection. The Victron charger is mains-powered and stops
-# advertising the instant AC drops, so "charger silent" is the primary signal.
-# The BMS is battery-powered and keeps answering, which proves Bluetooth is
-# healthy — that is what lets us call an outage quickly without false alarms
-# from BLE hiccups.
-fast_minutes = 5          # charger silent this long WHILE the BMS is still
-                          # answering -> MAINS LOST (high confidence)
-ble_alive_minutes = 3     # "BMS still answering" means a sample this recent
-slow_minutes = 45         # charger silent this long even if the BMS is also
-                          # silent -> MAINS LOST (low confidence; may be a
-                          # Bluetooth adapter failure instead)
-restore_minutes = 2       # a charger advertisement this recent -> MAINS ON
-discharge_current_a = -1.0   # battery current below this is reported as
-                             # "discharging" in the alert text (informational)
-use_windows_power_status = true   # if the PC is on a USB-connected UPS,
-                                  # Windows reports AC loss instantly
-# APRS announcements on mains transitions (all use the proven RF+IS path):
-aprs_status_packet = true     # send an APRS status packet (">AC MAINS LOST ...")
-aprs_kick_telemetry = true    # send position + T# data frame right away
-aprs_comment_flag = true      # append " MAINS LOST" to the position comment
-                              # while the outage lasts
+# How an AC outage is recognised (see the Power page for the full explanation).
+# Charger silent (min) → suspect outage. While the BMS still answers. One Bluetooth restart follows; still silent this long after it → MAINS LOST.
+fast_minutes = 5
+# BMS 'still answering' window (min).
+ble_alive_minutes = 3
+# Charger silent (min) → outage even if BMS silent. Low-confidence fallback (may be a Bluetooth failure).
+slow_minutes = 45
+# Charger heard within (min) → mains ON.
+restore_minutes = 2
+# Report 'discharging' below (A). Informational text in alerts only.
+discharge_current_a = -1.0
+# Use Windows power status. Instant detection if the PC is on a USB-connected UPS.
+use_windows_power_status = true
+# APRS status packet on change. '>AC MAINS LOST …' / '>AC MAINS RESTORED …'.
+aprs_status_packet = true
+# Immediate APRS position + telemetry on change.
+aprs_kick_telemetry = true
+# Append ' MAINS LOST' to the APRS comment. While the outage lasts.
+aprs_comment_flag = true
 
 [alerts]
-soc_urgent_pct = 30          # SoC below this -> urgent
-soc_degraded_pct = 50        # SoC below this -> daily digest mode
-soc_recovery_pct = 80        # SoC above this for recovery window -> back to normal
-soc_drop_per_hour_pct = 20   # SoC drop >this% in 1 h -> urgent
-cell_spread_mv = 30          # max(cell) - min(cell) above this -> event (no email)
-temp_high_c = 35             # battery temp above this -> urgent
-temp_low_c = 0               # battery temp below this -> urgent
-watchdog_email_threshold = 12 # Email only if BLE watchdog restarts this many
-                              # or more times within 24 h
-digest_hour = 8              # local-time hour for daily digest (DEGRADED mode)
+# When to email and when to enter DEGRADED mode.
+# SoC urgent below (%).
+soc_urgent_pct = 30
+# SoC DEGRADED below (%). Enters DEGRADED mode (daily digest).
+soc_degraded_pct = 50
+# SoC recovered above (%). Needed (with mains OK) to leave DEGRADED.
+soc_recovery_pct = 80
+# SoC drop per hour → urgent (%).
+soc_drop_per_hour_pct = 20
+# Cell spread event above (mV). Logged, no email.
+cell_spread_mv = 30
+# Battery temperature high (°C).
+temp_high_c = 35
+# Battery temperature low (°C).
+temp_low_c = 0
+# BLE restarts per 24 h before emailing.
+watchdog_email_threshold = 12
+# Daily digest hour (local). Only while DEGRADED.
+digest_hour = 8
+# Daily digest minute.
 digest_minute = 0
-urgent_rate_limit_minutes = 60  # one urgent per trigger type per this many minutes
-mode_recovery_minutes = 60      # how long the trigger condition must be CLEAR before
-                                # we drop back from DEGRADED to NORMAL (hysteresis)
+# One urgent email per trigger per (min).
+urgent_rate_limit_minutes = 60
+# Condition clear for (min) before NORMAL. Hysteresis.
+mode_recovery_minutes = 60
 
 [dashboard]
+# Web dashboard binding and what happens when the monitor starts.
+# Bind address. 127.0.0.1 = this PC only (expose with Tailscale serve).
 host = "127.0.0.1"
+# Port.
 port = 8080
-open_browser = true       # open the dashboard in the default browser at startup
-                          # -- only if no browser tab already has it open
-browser_check_delay_s = 15   # how long to wait for an existing tab to check in
+# Open the dashboard in a browser at startup. Only if no browser tab already has it open.
+open_browser = true
+# Wait for an existing tab (s).
+browser_check_delay_s = 15
 
 [updater]
+# Automatic updates from GitHub Releases.
+# Automatic update checks.
 enabled = true
-repo = "KK4ODA/w4boc-battery-monitor"   # GitHub repo that publishes releases
+# GitHub repository. owner/name publishing the releases.
+repo = "KK4ODA/w4boc-battery-monitor"
+# Check every (hours).
 check_interval_hours = 6
+# First check after start (min).
 startup_check_delay_min = 3
-auto_install = true       # install a verified download automatically and
-                          # restart; false = wait for the "Install" button
-# github_token (optional, for private repos) lives in secrets.toml
+# Install automatically. Otherwise wait for the Install button.
+auto_install = true
+# github_token lives in secrets.toml

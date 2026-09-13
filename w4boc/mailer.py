@@ -14,28 +14,34 @@ from . import config
 
 log = logging.getLogger(__name__)
 
-SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = 587  # STARTTLS
 
 
-def send(subject: str, body: str, recipients: list[str] | None = None) -> bool:
+def send(subject: str, body: str, recipients: list[str] | None = None, *,
+         sender: str | None = None, password: str | None = None,
+         host: str | None = None, port: int | None = None) -> bool:
+    """Send via SMTP/STARTTLS. Keyword overrides let the Settings page test
+    credentials that are saved on disk but not yet loaded by this process."""
     rcpts = recipients or config.EMAIL_RECIPIENTS
-    if not config.EMAIL_ENABLED:
+    sender = sender if sender is not None else config.EMAIL_SENDER
+    password = password if password is not None else config.EMAIL_PASSWORD
+    host = host or config.EMAIL_SMTP_HOST
+    port = port or config.EMAIL_SMTP_PORT
+    if not (sender and password and rcpts):
         log.info(f"[MAIL DISABLED] would send to {rcpts}: {subject}")
         return False
 
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = config.EMAIL_SENDER
+    msg["From"] = sender
     msg["To"] = ", ".join(rcpts)
     msg["Date"] = datetime.now(config.TZ).strftime("%a, %d %b %Y %H:%M:%S %z")
     msg.set_content(body)
 
     try:
         ctx = ssl.create_default_context()
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as s:
+        with smtplib.SMTP(host, port, timeout=30) as s:
             s.starttls(context=ctx)
-            s.login(config.EMAIL_SENDER, config.EMAIL_PASSWORD)
+            s.login(sender, password)
             s.send_message(msg)
         log.info(f"sent email to {rcpts}: {subject}")
         return True

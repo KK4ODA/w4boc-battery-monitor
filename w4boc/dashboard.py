@@ -20,7 +20,8 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Flask, jsonify, render_template, request
 
-from . import __version__, config
+from . import __version__, autostart, config, mailer
+from . import settings as S
 from .context import AppContext, EXIT_RESTART
 from .mains import fmt_duration
 
@@ -153,6 +154,90 @@ def create_app(ctx: AppContext) -> Flask:
     @app.route("/power")
     def page_power():
         return render_template("power.html", cfg_fast=config.MAINS_FAST_MINUTES)
+
+    # ---------- settings ----------
+
+    def _settings_files():
+        cfg = S.load_toml(config.CONFIG_PATH)
+        sec = S.load_toml(config.SECRETS_PATH)
+        return cfg, sec
+
+    def _render_settings(values, extra, errors=None, saved=False, changed=None, notice=None):
+        return render_template(
+            "settings.html",
+            sections=S.SECTIONS, order=S.SECTION_ORDER, fields_in=S.fields_in,
+            values=values, errors=errors or {}, saved=saved, changed=changed or [],
+            notice=notice, autostart=autostart.status(),
+            config_path=str(config.CONFIG_PATH), secrets_path=str(config.SECRETS_PATH),
+            needs_restart=any(S.field(*c.split(".", 1)).restart for c in (changed or [])),
+        )
+
+    @app.route("/settings")
+    def page_settings():
+        cfg, sec = _settings_files()
+        values, extra = S.current_values(cfg, sec)
+        return _render_settings(values, extra)
+
+    @app.route("/api/settings/save", methods=["POST"])
+    def api_settings_save():
+        cfg, sec = _settings_files()
+        current, extra = S.current_values(cfg, sec)
+        form = request.form.to_dict()
+        # The start-with-Windows switch is applied immediately elsewhere; keep it.
+        form["site.start_with_windows"] = "1" if current.get("site.start_with_windows") else ""
+        keep = {f.id: current.get(f.id, "") for f in S.SCHEMA if f.secret}
+        values, errors = S.validate(form, secrets_keep=keep)
+        if errors:
+            log.warning(f"settings not saved: {len(errors)} invalid field(s)")
+            return _render_settings(values, extra, errors=errors), 400
+        changed = [f.id for f in S.SCHEMA if values.get(f.id) != current.get(f.id)]
+        S.save(values, config.CONFIG_PATH, config.SECRETS_PATH, extra)
+        shown = [c for c in changed if not S.field(*c.split(".", 1)).secret]
+        hidden = len(changed) - len(shown)
+        detail = ", ".join(shown) + (f" (+{hidden} secret)" if hidden else "")
+        ctx.storage.log_event("settings_saved", "info", detail or "no changes")
+        log.info(f"settings saved: {detail or 'no changes'}")
+        return _render_settings(values, extra, saved=True, changed=changed)
+
+    @app.route("/api/settings/test-email", methods=["POST"])
+    def api_settings_test_email():
+        cfg, sec = _settings_files()
+        v, _ = S.current_values(cfg, sec)
+        recipients = v.get("email.recipients") or []
+        if not (v.get("email.sender") and v.get("email.app_password") and recipients):
+            return render_template("partials/action.html",
+                                   msg="Email is not configured (sender, app password and recipients "
+                                       "must all be saved first).")
+        ok = mailer.send(
+            f"[{v.get('site.name')}] Test email from the dashboard",
+            "If you are reading this, the saved SMTP settings work.\n",
+            recipients=list(recipients),
+            sender=str(v.get("email.sender")), password=str(v.get("email.app_password")),
+            host=str(v.get("email.smtp_host")), port=int(v.get("email.smtp_port") or 587),
+        )
+        ctx.storage.log_event("manage", "info", f"test email sent={ok} to {', '.join(recipients)}")
+        return render_template("partials/action.html",
+                               msg=("Test email sent to " + ", ".join(recipients)) if ok else
+                                   "Sending failed — see the log (Logs page) for the SMTP error.")
+
+    @app.route("/api/autostart", methods=["POST"])
+    def api_autostart():
+        on = request.args.get("on", "1") not in ("0", "false")
+        ok, msg = autostart.enable() if on else autostart.disable()
+        if ok:
+            cfg, sec = _settings_files()
+            values, extra = S.current_values(cfg, sec)
+            values["site.start_with_windows"] = on
+            S.save(values, config.CONFIG_PATH, config.SECRETS_PATH, extra)
+            ctx.storage.log_event("settings_saved", "info",
+                                  f"start with Windows {'enabled' if on else 'disabled'}")
+        else:
+            log.warning(f"autostart change failed: {msg}")
+        return render_template("partials/autostart.html", autostart=autostart.status(), msg=msg, ok=ok)
+
+    @app.route("/partials/autostart")
+    def partial_autostart():
+        return render_template("partials/autostart.html", autostart=autostart.status())
 
     @app.route("/logs")
     def page_logs():

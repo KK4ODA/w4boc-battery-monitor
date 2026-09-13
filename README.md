@@ -51,11 +51,12 @@ AGWPE server on port 8000 (for RF), Bluetooth adapter.
    put it wherever you like, e.g. `C:\W4BOC\w4boc-battery-monitor`).
 2. `pip install -r requirements.txt`
 3. Copy `config.example.toml` → `config.toml` and `secrets.toml.example` →
-   `secrets.toml`; fill in the MACs, Victron encryption key, Gmail app
-   password, APRS-IS passcode and recipients.
+   `secrets.toml`; put at least the Victron encryption key in `secrets.toml`
+   (everything else can be entered on the dashboard's Settings page).
 4. Double-click `run.bat`. The dashboard opens at <http://localhost:8080/>.
-5. `tools\install_autostart.bat` adds a Startup-folder shortcut so it comes
-   back after a reboot (auto-login is assumed).
+5. Open **Settings**: fill in MACs, email, APRS, thresholds; turn on
+   **Start with Windows** so the monitor comes back after a reboot
+   (auto-login is assumed). Save, then *Restart now*.
 
 Upgrading from v1: [docs/UPGRADING.md](docs/UPGRADING.md).
 
@@ -74,11 +75,20 @@ To publish a release: bump `VERSION`, add a `## [X.Y.Z]` section to
 `CHANGELOG.md`, commit, then `git tag vX.Y.Z && git push --tags`. The
 *Release* workflow runs the tests, builds the archive and publishes it.
 
+## Configuration
+
+All settings live in `config.toml` (site-specific, never overwritten by
+updates) and `secrets.toml` (Victron key, Gmail app password, optional
+GitHub token). The dashboard's **Settings** page edits both with validation
+and keeps `.bak` copies; `w4boc/settings.py` is the schema behind the page,
+the defaults and the example files (`python tools/gen_examples.py`
+regenerates them).
+
 ## Development
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest -q                      # 58 tests, no hardware needed
+python -m pytest -q                      # 70 tests, no hardware needed
 python main.py --simulate --no-browser   # fake BMS/charger, dashboard on :8080
 python launcher.py --simulate            # same, under the supervisor
 ```

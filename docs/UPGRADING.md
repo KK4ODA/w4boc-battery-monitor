@@ -50,10 +50,10 @@ rf=True is=True` frame.
 
 ## 4. Replace the Startup shortcuts
 
-Run `tools\install_autostart.bat`. It deletes the old `run_monitor` /
-`run_dashboard` shortcuts from the Startup folder (if they were named that
-way — check `shell:startup` and remove any leftovers by hand) and creates
-one shortcut to `run.bat`.
+Dashboard → **Settings** → turn on **Start with Windows** (or run
+`tools\install_autostart.bat`). This creates one shortcut to `run.bat` and
+deletes the old `run_monitor` / `run_dashboard` shortcuts if they carry the
+usual names — check `shell:startup` and remove any leftovers by hand.
 
 ## 5. Nightly reboot
 

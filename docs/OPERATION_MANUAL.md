@@ -63,6 +63,8 @@ through YAAC. APRS-IS uplink is also direct.
 - **Power** — outage history: count, total time without mains, longest
   outage, and every transition with its reason and confidence.
 - **Logs** — tail of `monitor.log` / `launcher.log` without RDP.
+- **Settings** — every setting, editable in the browser (§6.7), plus the
+  *Start with Windows* switch.
 
 The app opens the dashboard in the default browser at startup **only if no
 browser tab already has it open** (an open tab polls the server every few
@@ -247,6 +249,30 @@ python tools\enum_gatt.py         BMS GATT table
 python tools\mailer_test.py       send a test email
 ```
 
+### 6.7 Settings page
+
+Dashboard → **Settings**. Sections: Site, Battery BMS, Charger, Email
+alerts, APRS telemetry, Mains power detection, Alert thresholds, Dashboard &
+startup, Updates. Every field has its meaning and limits next to it.
+
+- **Save settings** validates everything (MAC/email/callsign formats,
+  ranges, cross-checks such as urgent < degraded SoC) and only then rewrites
+  `config.toml` and `secrets.toml`, keeping the previous copies as
+  `config.toml.bak` / `secrets.toml.bak` and preserving any keys it does not
+  know about. Nothing is written if a field is invalid.
+- Secrets (Victron key, Gmail app password, GitHub token) are shown as
+  "(set)" only; leave a secret blank to keep it, tick *clear* to remove it.
+- Most changes need a restart — the green banner offers **Restart now**.
+- **Send test email** uses the values saved on disk, so save first.
+- **Start with Windows** (top of the page) creates or removes the Startup
+  shortcut immediately and records the choice in `[site]
+  start_with_windows`; when it is on, a missing shortcut is recreated at
+  the next start. Command line: `python -m w4boc.autostart enable|disable|status`.
+
+The page is served by the dashboard, so it is reachable from the tailnet
+when `tailscale serve` is on — anyone who can open the dashboard can change
+settings. Keep the tailnet invitation list short.
+
 ---
 
 ## 7. Remote access via Tailscale
@@ -260,10 +286,14 @@ access.
 
 ## 8. Configuration reference
 
-See the comments in `config.example.toml`. Sections: `[bms]`, `[victron]`,
-`[site]`, `[email]`, `[aprs]`, `[mains]`, `[alerts]`, `[dashboard]`,
-`[updater]`. Secrets: `secrets.toml` (`[victron] encryption_key`,
-`[email] app_password`, `[updater] github_token`).
+Use the Settings page (§6.7) or edit `config.toml` by hand — the file is
+fully commented (`config.example.toml` shows every key with its default).
+Sections: `[site]` (name, time zone, sampling, retention, lock port, start
+with Windows), `[bms]`, `[victron]`, `[email]` (sender, recipients, SMTP),
+`[aprs]` (callsign, AGW/APRS-IS, position, symbol, cadence, tocall, project
+name, comment prefix), `[mains]`, `[alerts]`, `[dashboard]`, `[updater]`.
+Secrets: `secrets.toml` (`[victron] encryption_key`, `[email] app_password`,
+`[updater] github_token`).
 
 ---
 

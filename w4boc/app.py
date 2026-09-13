@@ -250,7 +250,7 @@ def run(args) -> int:
     _setup_logging()
     simulate = bool(getattr(args, "simulate", False)) or config.SIMULATE
     # Singleton lock — exits with a clear message if another instance is running.
-    lock = singleton.acquire("monitor", 50001)
+    lock = singleton.acquire("monitor", config.INSTANCE_LOCK_PORT)
 
     storage = Storage()
     loop = asyncio.new_event_loop()
@@ -265,7 +265,7 @@ def run(args) -> int:
         f"{'; SIMULATION' if simulate else ''}",
     )
     log.info(
-        f"W4BOC Battery Monitor v{__version__} starting"
+        f"{config.SITE_NAME} Battery Monitor v{__version__} starting"
         f"{' in SIMULATION mode' if simulate else ''}. "
         f"Email {'ENABLED' if config.EMAIL_ENABLED else 'DISABLED (app password blank)'}. "
         f"DB: {config.DB_PATH}"
@@ -281,6 +281,13 @@ def run(args) -> int:
     if simulate:
         from .simulate import SimState
         ctx.sim = SimState(storage)
+
+    # Start-with-Windows: the config value is the intent; make sure the Startup
+    # shortcut exists when it is on (never removed automatically).
+    if config.START_WITH_WINDOWS and not simulate:
+        from . import autostart
+        ok, msg = autostart.ensure_enabled()
+        (log.info if ok else log.warning)(f"autostart: {msg}")
 
     # Dashboard: bind in this thread (fail fast on a busy port), serve in a thread.
     from .dashboard import create_app

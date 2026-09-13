@@ -22,6 +22,7 @@ those.
 | **Last 7 days** | Hourly charts and stats |
 | **Power** | Mains outage history and totals |
 | **Logs** | Tail of the application log |
+| **Settings** | All settings and the Start-with-Windows switch (operators only) |
 
 Live refreshes itself every few seconds. If the monitor restarts (it does so
 a few times a day for Bluetooth hygiene, and after updates) a red

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+
+{% macro input(f, v, err) %}
+  {% if f.type == 'bool' %}
+    <label class="check"><input type="checkbox" name="{{ f.id }}" value="1" {% if v %}checked{% endif %}> {{ f.label }}</label>
+  {% elif f.type == 'list' %}
+    <label for="{{ f.id }}">{{ f.label }}</label>
+    <textarea id="{{ f.id }}" name="{{ f.id }}" rows="3">{{ v|join('\n') if v is iterable and v is not string else v }}</textarea>
+  {% elif f.type == 'secret' %}
+    <label for="{{ f.id }}">{{ f.label }}</label>
+    <input id="{{ f.id }}" type="password" name="{{ f.id }}" autocomplete="new-password"
+           placeholder="{% if v %}(set — leave blank to keep){% else %}{{ f.placeholder or '(not set)' }}{% endif %}">
+    <label class="check tiny"><input type="checkbox" name="{{ f.id }}__clear" value="1"> clear</label>
+  {% elif f.type in ('int', 'float') %}
+    <label for="{{ f.id }}">{{ f.label }}</label>
+    <input id="{{ f.id }}" type="number" name="{{ f.id }}" value="{{ v }}"
+           {% if f.type == 'int' %}step="1"{% else %}step="any"{% endif %}
+           {% if f.min is not none %}min="{{ f.min }}"{% endif %} {% if f.max is not none %}max="{{ f.max }}"{% endif %}>
+  {% else %}
+    <label for="{{ f.id }}">{{ f.label }}</label>
+    <input id="{{ f.id }}" type="text" name="{{ f.id }}" value="{{ v }}" spellcheck="false">
+  {% endif %}
+  {% if err %}<div class="field-error">{{ err }}</div>{% endif %}
+  {% if f.help %}<div class="help">{{ f.help }}</div>{% endif %}
+{% endmacro %}
+
+{% if errors %}
+<div class="banner bad">Not saved — {{ errors|length }} field{{ 's' if errors|length != 1 }} need attention (marked below).</div>
+{% elif saved %}
+<div class="banner {{ 'warn' if needs_restart else 'ok' }}">
+  Saved to <code>{{ config_path }}</code>{% if changed %} — changed: {{ changed|join(', ') }}{% else %} — nothing changed{% endif %}.
+  {% if needs_restart %}
+    The monitor must restart to apply.
+    <button class="primary inline" hx-post="/api/app/restart" hx-target="#action-result" hx-swap="innerHTML"
+            hx-confirm="Restart the monitor now? Telemetry pauses for ~20 s.">Restart now</button>
+  {% endif %}
+</div>
+{% endif %}
+<div id="action-result" class="action-result"></div>
+
+<section class="card">
+  <h2>Start with Windows</h2>
+  <div id="autostart" hx-get="/partials/autostart" hx-trigger="load" hx-swap="innerHTML">
+    {% include "partials/autostart.html" %}
+  </div>
+</section>
+
+<form method="post" action="/api/settings/save" class="settings">
+  {% for sec in order %}
+  <section class="card" id="sec-{{ sec }}">
+    <h2>{{ sections[sec][0] }}</h2>
+    {% if sections[sec][1] %}<p class="tiny muted">{{ sections[sec][1] }}</p>{% endif %}
+    <div class="fields">
+      {% for f in fields_in(sec) if f.id != 'site.start_with_windows' %}
+      <div class="field {% if errors.get(f.id) %}has-error{% endif %} {% if f.type == 'bool' %}field-bool{% endif %}">
+        {{ input(f, values.get(f.id, f.default), errors.get(f.id)) }}
+      </div>
+      {% endfor %}
+    </div>
+    {% if sec == 'email' %}
+    <div class="btn-row">
+      <button type="button" hx-post="/api/settings/test-email" hx-target="#action-result" hx-swap="innerHTML">
+        Send test email (uses the saved values)
+      </button>
+    </div>
+    {% endif %}
+  </section>
+  {% endfor %}
+
+  <section class="card sticky-save">
+    <div class="btn-row">
+      <button type="submit" class="primary">Save settings</button>
+      <span class="tiny muted">Writes <code>{{ config_path }}</code> and <code>{{ secrets_path }}</code> (previous copies kept as .bak). Most changes apply after a restart.</span>
+    </div>
+  </section>
+</form>
+
+{% endblock %}

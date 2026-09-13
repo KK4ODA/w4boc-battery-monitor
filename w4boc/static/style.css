@@ -120,3 +120,27 @@ table.events thead th { text-align: left; color: var(--muted); font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
 pre.bad { color: var(--red); }
 @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+/* ---- settings page ---- */
+form.settings .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px 24px; }
+form.settings .field label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+form.settings .field label.check { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px; cursor: pointer; }
+form.settings .field label.check.tiny { color: var(--muted); font-size: 11px; margin-top: 4px; }
+form.settings input[type=text], form.settings input[type=number], form.settings input[type=password], form.settings textarea {
+  width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px;
+  padding: 6px 8px; font-family: inherit; font-size: 13px; }
+form.settings input:focus, form.settings textarea:focus { outline: none; border-color: var(--blue); }
+form.settings .field.has-error input, form.settings .field.has-error textarea { border-color: var(--red); }
+form.settings .field-error { color: var(--red); font-size: 12px; margin-top: 4px; }
+form.settings .help { color: var(--muted); font-size: 11px; margin-top: 4px; line-height: 1.35; }
+form.settings .field-bool { align-self: end; }
+.sticky-save { position: sticky; bottom: 8px; z-index: 5; box-shadow: 0 -4px 16px rgba(0,0,0,0.35); }
+button.inline { margin-left: 12px; padding: 2px 10px; font-size: 12px; }
+.banner.ok { background: rgba(63, 185, 80, 0.15); color: var(--green); }
+.switch-row { display: flex; align-items: center; gap: 16px; }
+.switch { position: relative; display: inline-block; width: 46px; height: 24px; flex: none; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch .slider { position: absolute; inset: 0; background: var(--panel-2); border: 1px solid var(--border); border-radius: 24px; cursor: pointer; transition: .15s; }
+.switch .slider:before { content: ""; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px; background: var(--muted); border-radius: 50%; transition: .15s; }
+.switch input:checked + .slider { background: rgba(63, 185, 80, 0.25); border-color: var(--green); }
+.switch input:checked + .slider:before { transform: translateX(22px); background: var(--green); }

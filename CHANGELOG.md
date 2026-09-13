@@ -1,5 +1,28 @@
 # Changelog
 
+## [2.1.0] — 2026-09-13
+
+### Added
+- **Settings page** on the dashboard: every setting (site, BMS, charger,
+  email, APRS, mains detection, alert thresholds, dashboard, updater) is
+  edited in the browser with validation, written to `config.toml` /
+  `secrets.toml` (previous copies kept as `.bak`, unknown keys preserved),
+  and applied with the *Restart now* button. Secrets are never echoed back;
+  a *Send test email* button uses the saved credentials.
+- **Start with Windows** switch (Settings page): creates/removes the Startup
+  shortcut immediately and records the intent in `[site] start_with_windows`,
+  which recreates a deleted shortcut at the next start. Also
+  `python -m w4boc.autostart enable|disable|status`; the
+  `tools\*_autostart.bat` scripts now call it.
+- Previously hard-wired values are now settings: SMTP server/port,
+  instance-lock port, database retention (raw / per-minute / hourly days),
+  APRS tocall, telemetry project name and position-comment prefix (the last
+  three default to the exact strings used since v1, so nothing changes on
+  the air unless you change them).
+- `w4boc/settings.py` is the single schema: `config.py` defaults, the
+  Settings page and `config.example.toml` / `secrets.toml.example`
+  (regenerated with `tools/gen_examples.py`) all derive from it.
+
 ## [2.0.1] — 2026-09-13
 
 ### Fixed

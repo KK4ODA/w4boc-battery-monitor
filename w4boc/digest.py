@@ -114,5 +114,5 @@ def _body(kind, period, stats, chg_time, events, bms, chg, mode) -> str:
     else:
         lines.append("  (none)")
 
-    lines += ["", "— W4BOC Battery Monitor"]
+    lines += ["", f"— {config.SITE_NAME} Battery Monitor"]
     return "\n".join(lines)

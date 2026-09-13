@@ -46,7 +46,7 @@ from .storage import Storage
 
 log = logging.getLogger(__name__)
 
-TOCALL = "APZBAT"  # APZ prefix = experimental/homebrew; BAT = battery monitor
+TOCALL = config.APRS_TOCALL        # "APZBAT": APZ = experimental/homebrew, BAT = battery monitor
 
 # EQNS coefficients for the five analog channels (a, b, c)
 EQNS_COEFFS = [
@@ -62,7 +62,7 @@ PARM_NAMES = ["Vbat", "Ibat", "SoC", "Tbat", "IchgO",
 UNIT_NAMES = ["Vdc", "Adc", "Pct", "degC", "Adc",
               "on", "on", "ok", "ok", "ok", "ok", "ok", "ok"]
 BITS_SENSE = "11111111"   # 1 = "active" sense for each bit; we report healthy=1
-PROJECT_NAME = "W4BOC Battery"
+PROJECT_NAME = config.APRS_PROJECT_NAME   # "<site> Battery" unless overridden
 
 # Minimum spacing between out-of-cadence (event-driven) frames of one kind.
 EVENT_MIN_SPACING_S = 60
@@ -174,9 +174,9 @@ def build_position_info(bms: dict | None, mains_lost: bool = False) -> str:
     pos = latlon_aprs(config.APRS_LAT, config.APRS_LON)
     if bms and bms["soc_pct"] is not None:
         temp = f" {bms['temp_c']:.0f}C" if bms.get("temp_c") is not None else ""
-        comment = f"W4BOC batt {bms['pack_voltage']:.2f}V {bms['soc_pct']}%{temp}"
+        comment = f"{config.APRS_COMMENT_PREFIX} {bms['pack_voltage']:.2f}V {bms['soc_pct']}%{temp}"
     else:
-        comment = "W4BOC battery monitor"
+        comment = f"{config.SITE_NAME} battery monitor"
     if mains_lost and config.MAINS_APRS_COMMENT:
         comment += " MAINS LOST"
     return f"={pos}{comment[:43]}"
@@ -234,6 +234,7 @@ async def aprs_task(storage: Storage, bus: AprsBus | None = None):
             config.APRS_APRSIS_PORT,
             config.APRS_CALLSIGN,
             config.APRS_APRSIS_PASSCODE,
+            software=f"{config.SITE_NAME}-Battery",
         )
 
     log.info(

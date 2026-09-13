@@ -403,7 +403,8 @@ async def housekeeping_task(ctx: AppContext):
     storage = ctx.storage
     while True:
         try:
-            counts = storage.prune()
+            counts = storage.prune(config.RETENTION_RAW_DAYS, config.RETENTION_MINUTE_DAYS,
+                                   config.RETENTION_MAX_DAYS)
             summary = ", ".join(f"{k}: -{v}" for k, v in counts.items())
             log.info(f"housekeeping: prune complete — {summary}")
             storage.log_event("housekeeping", "info", f"prune {summary}")

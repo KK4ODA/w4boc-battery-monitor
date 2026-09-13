@@ -1,0 +1,27 @@
+{% if not autostart.supported %}
+  <p class="muted">Only available on Windows.</p>
+{% else %}
+  <div class="switch-row">
+    <label class="switch">
+      <input type="checkbox" {% if autostart.enabled and autostart.target_ok %}checked{% endif %}
+             hx-post="/api/autostart?on={{ '0' if (autostart.enabled and autostart.target_ok) else '1' }}"
+             hx-target="#autostart" hx-swap="innerHTML">
+      <span class="slider"></span>
+    </label>
+    <div>
+      <b class="{{ 'ok' if (autostart.enabled and autostart.target_ok) else 'muted' }}">
+        {{ 'Enabled' if (autostart.enabled and autostart.target_ok) else 'Disabled' }}
+      </b>
+      <div class="tiny muted">
+        {% if autostart.enabled and not autostart.target_ok %}
+          A shortcut exists but points elsewhere ({{ autostart.target or '?' }}). Turn the switch off and on to fix it.
+        {% elif autostart.enabled %}
+          Shortcut: {{ autostart.path }}
+        {% else %}
+          Creates a shortcut to run.bat in the Startup folder (this Windows user, at login).
+        {% endif %}
+      </div>
+      {% if msg %}<div class="tiny {{ 'ok' if ok else 'bad' }}">{{ msg }}</div>{% endif %}
+    </div>
+  </div>
+{% endif %}
