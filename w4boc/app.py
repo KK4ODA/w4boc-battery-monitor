@@ -286,7 +286,13 @@ def run(args) -> int:
     from .dashboard import create_app
     from waitress import create_server
     flask_app = create_app(ctx)
-    server = create_server(flask_app, host=config.DASH_HOST, port=config.DASH_PORT, threads=8)
+    try:
+        server = create_server(flask_app, host=config.DASH_HOST, port=config.DASH_PORT, threads=8)
+    except OSError as e:
+        log.error(f"cannot bind dashboard to {ctx.dashboard_url}: {e} — is another dashboard "
+                  f"(e.g. the v1 run_dashboard.bat) still running? Stop it or change [dashboard] port.")
+        storage.close()
+        return 4
     threading.Thread(target=server.run, name="dashboard", daemon=True).start()
     log.info(f"dashboard on {ctx.dashboard_url}")
 
