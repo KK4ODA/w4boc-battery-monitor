@@ -38,7 +38,7 @@ def _fail(msg: str):
     sys.stderr.write("=" * 60 + "\n")
     sys.stderr.write(msg.rstrip() + "\n")
     sys.stderr.write("=" * 60 + "\n\n")
-    sys.exit(2)
+    sys.exit(4)   # not 2: the launcher would treat 2 as a quick-restart request
 
 
 def _load_toml(path: Path) -> dict:
