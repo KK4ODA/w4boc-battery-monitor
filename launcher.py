@@ -133,6 +133,8 @@ def _run_child(extra_args: list[str]) -> tuple[int | str, float]:
         if fresh:
             healthy_since = healthy_since or time.time()
             healthy_s = time.time() - healthy_since
+            if healthy_s >= VERIFY_HEALTHY_S and PENDING_JSON.exists():
+                _mark_update_verified(healthy_s)
         else:
             healthy_since = None
         if uptime > STARTUP_GRACE_S and not fresh:
@@ -259,21 +261,29 @@ def rollback(app_dir: Path = APP_DIR, updates_dir: Path = UPDATES_DIR) -> bool:
     return True
 
 
+def _mark_update_verified(healthy_s: float):
+    pending = _read_json(PENDING_JSON)
+    if not pending:
+        return
+    _write_json(LAST_UPDATE_JSON, {
+        "version": pending.get("version"),
+        "from_version": pending.get("from_version"),
+        "verified_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "reported": False,
+    })
+    PENDING_JSON.unlink(missing_ok=True)
+    log.info(f"update to v{pending.get('version')} verified (healthy {int(healthy_s)}s)")
+
+
 def _post_run_update_bookkeeping(rc, healthy_s: float):
-    """After each child run, decide whether a pending update is verified,
-    needs another attempt, or must be rolled back."""
+    """After a child run that ended before the update was verified: count the
+    attempt and roll back once MAX_UPDATE_ATTEMPTS is reached. (A child that
+    stays healthy is verified while it runs, see _run_child.)"""
     pending = _read_json(PENDING_JSON)
     if not pending:
         return
     if healthy_s >= VERIFY_HEALTHY_S or rc == 0:
-        _write_json(LAST_UPDATE_JSON, {
-            "version": pending.get("version"),
-            "from_version": pending.get("from_version"),
-            "verified_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-            "reported": False,
-        })
-        PENDING_JSON.unlink(missing_ok=True)
-        log.info(f"update to v{pending.get('version')} verified (healthy {int(healthy_s)}s)")
+        _mark_update_verified(healthy_s)
         return
     pending["attempts"] = int(pending.get("attempts", 0)) + 1
     _write_json(PENDING_JSON, pending)
