@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block page_title %}Logs{% endblock %}
+{% block content %}
+
+<section class="card">
+  <h2>Log tail</h2>
+  <div class="btn-row">
+    <a class="btn {% if which == 'monitor' %}active{% endif %}" href="/logs?f=monitor&n={{ n }}">monitor.log</a>
+    <a class="btn {% if which == 'launcher' %}active{% endif %}" href="/logs?f=launcher&n={{ n }}">launcher.log</a>
+    <a class="btn {% if which == 'wrapper' %}active{% endif %}" href="/logs?f=wrapper&n={{ n }}">wrapper.log</a>
+    <span class="muted">last {{ n }} lines ·</span>
+    <a class="btn" href="/logs?f={{ which }}&n=100">100</a>
+    <a class="btn" href="/logs?f={{ which }}&n=300">300</a>
+    <a class="btn" href="/logs?f={{ which }}&n=1000">1000</a>
+    <a class="btn" href="/logs?f={{ which }}&n={{ n }}">refresh</a>
+  </div>
+  <pre class="logtail">{% for l in lines %}{{ l }}{% endfor %}{% if not lines %}(empty){% endif %}</pre>
+</section>
+
+{% endblock %}

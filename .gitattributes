@@ -1,0 +1,9 @@
+* text=auto
+*.bat text eol=crlf
+*.py text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.yml text eol=lf
+*.js -text

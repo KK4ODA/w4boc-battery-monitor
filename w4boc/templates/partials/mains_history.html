@@ -1,0 +1,28 @@
+<div class="stats-row">
+  <div class="big-card"><div class="label">Outages (last {{ stats.days }} d)</div><div class="value">{{ stats.count }}</div></div>
+  <div class="big-card"><div class="label">Total time without mains</div><div class="value">{{ stats.total }}</div></div>
+  <div class="big-card"><div class="label">Longest outage</div><div class="value">{{ stats.longest }}</div></div>
+</div>
+<h3 class="mt">Power events</h3>
+{% if events %}
+<table class="events">
+  <thead><tr><th>When</th><th>Event</th><th>Outage</th><th>Details</th></tr></thead>
+  <tbody>
+  {% for e in events %}
+  <tr>
+    <td class="ts">{{ e.ts_local }}</td>
+    <td>
+      {% if e.state == 'lost' %}<span class="badge badge-bad">mains lost</span>
+      {% elif e.state == 'restored' %}<span class="badge badge-ok">restored</span>
+      {% elif e.state == 'pc_down' %}<span class="badge badge-warn">PC down</span>
+      {% else %}<span class="badge">{{ e.state }}</span>{% endif %}
+    </td>
+    <td class="kind">{{ e.outage }}</td>
+    <td class="detail">{{ e.reason }}{% if e.confidence %} <span class="muted">[{{ e.confidence }}]</span>{% endif %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No power events recorded yet.</p>
+{% endif %}

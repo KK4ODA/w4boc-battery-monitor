@@ -1,0 +1,56 @@
+<h3>Tailscale</h3>
+
+{% if not ts.ok %}
+  <p class="bad">✗ {{ ts.error }}</p>
+  <p class="muted">Install Tailscale or add <code>tailscale</code> to PATH.</p>
+{% else %}
+  <ul class="kv">
+    <li><span>Daemon</span>
+      <b class="{{ 'ok' if ts.backend == 'Running' else 'bad' }}">{{ ts.backend }}</b>
+    </li>
+    <li><span>Hostname</span>
+      <b>{{ ts.dns_name or '—' }}</b>
+    </li>
+    <li><span>Tailnet IPs</span>
+      <b>{{ ts.ips|join(', ') if ts.ips else '—' }}</b>
+    </li>
+    <li><span>Serve on :{{ port }}</span>
+      <b class="{{ 'ok' if serve.enabled else 'muted' }}">
+        {{ 'ENABLED' if serve.enabled else 'disabled' }}
+      </b>
+    </li>
+  </ul>
+
+  {% if serve.enabled and ts.dns_name %}
+  <p class="url-box">
+    <a href="https://{{ ts.dns_name }}/" target="_blank">
+      https://{{ ts.dns_name }}/
+    </a>
+  </p>
+  {% endif %}
+
+  <div class="btn-row">
+    {% if serve.enabled %}
+      <button hx-post="/api/tailscale/serve/disable" hx-target="#tailscale" hx-swap="innerHTML">
+        Disable tailnet serve
+      </button>
+    {% else %}
+      <button hx-post="/api/tailscale/serve/enable" hx-target="#tailscale" hx-swap="innerHTML">
+        Enable tailnet serve
+      </button>
+    {% endif %}
+  </div>
+
+  {% if last_action %}
+    <div class="action-result">
+      <small>
+        Last action: <b>{{ last_action.kind }}</b> — rc={{ last_action.rc }}
+      </small>
+      {% if last_action.rc != 0 %}
+        <pre class="bad">{{ last_action.err or last_action.out or '(no output)' }}</pre>
+      {% elif last_action.out %}
+        <pre class="muted">{{ last_action.out }}</pre>
+      {% endif %}
+    </div>
+  {% endif %}
+{% endif %}

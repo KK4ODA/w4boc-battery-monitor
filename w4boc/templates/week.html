@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block page_title %}Last 7 days{% endblock %}
+{% block content %}
+
+<section class="card">
+  <h2>Last 7 days — hourly aggregates</h2>
+  <div class="chart-legend" id="legend-7d">
+    <label><input type="checkbox" data-s="2" checked><span class="swatch dash" style="color:#3fb950"></span>SoC avg</label>
+    <label><input type="checkbox" data-s="3"><span class="swatch" style="color:#56d8d8"></span>SoC min</label>
+    <label><input type="checkbox" data-s="4"><span class="swatch" style="color:#ffdb58"></span>SoC max</label>
+    <label><input type="checkbox" data-s="0" checked><span class="swatch" style="color:#58a6ff"></span>Battery V avg</label>
+    <label><input type="checkbox" data-s="1"><span class="swatch" style="color:#ff8800"></span>Battery A avg</label>
+    <label><input type="checkbox" data-s="5"><span class="swatch" style="color:#f85149"></span>Temp °C</label>
+    <label><input type="checkbox" data-s="6" checked><span class="swatch fill" style="color:#f85149"></span>Mains lost</label>
+  </div>
+  <div class="chart-container"><canvas id="chart7d"></canvas></div>
+</section>
+
+<section id="week-stats" class="card">
+  <h2>Summary</h2>
+  <div id="stats-body"><p class="muted">loading…</p></div>
+</section>
+
+<script>
+(function() {
+  const ctx = document.getElementById('chart7d').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {datasets: [
+      {label: 'Battery V avg', yAxisID: 'v',   borderColor: '#58a6ff', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2.5, stepped: 'before', data: []},
+      {label: 'Battery A avg', yAxisID: 'i',   borderColor: '#ff8800', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2.5, stepped: 'before', hidden: true, data: []},
+      {label: 'SoC % avg',  yAxisID: 'soc', borderColor: '#3fb950', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 3,   borderDash: [6,4], stepped: 'before', data: []},
+      {label: 'SoC min',    yAxisID: 'soc', borderColor: '#56d8d8', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2, stepped: 'before', hidden: true, data: []},
+      {label: 'SoC max',    yAxisID: 'soc', borderColor: '#ffdb58', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2, stepped: 'before', hidden: true, data: []},
+      {label: 'Temp °C',    yAxisID: 't',   borderColor: '#f85149', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2, stepped: 'before', hidden: true, data: []},
+      {label: 'Mains lost', yAxisID: 'soc', borderColor: 'rgba(248,81,73,0)', backgroundColor: 'rgba(248,81,73,0.18)', fill: 'origin', pointRadius: 0, borderWidth: 0, stepped: 'before', data: []},
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: {mode: 'index', intersect: false},
+      scales: {
+        x: {type: 'time', time: {unit: 'day', tooltipFormat: 'yyyy-MM-dd HH:mm'}, ticks: {color: '#7a8590', maxTicksLimit: 14, autoSkip: true}, grid: {color: '#2a323c'}},
+        v:   {position: 'left',  min: 12.0, max: 14.7, ticks: {color: '#58a6ff'}, grid: {color: '#2a323c'}, title: {display: true, text: 'V', color: '#58a6ff'}},
+        i:   {position: 'right', suggestedMin: -10, suggestedMax: 20, ticks: {color: '#ff8800'}, grid: {drawOnChartArea: false}, title: {display: true, text: 'A', color: '#ff8800'}},
+        soc: {position: 'right', offset: true, min: 0, max: 100, ticks: {color: '#3fb950'}, grid: {drawOnChartArea: false}, title: {display: true, text: '%', color: '#3fb950'}},
+        t:   {position: 'right', offset: true, suggestedMin: 0, suggestedMax: 50, ticks: {color: '#f85149'}, grid: {drawOnChartArea: false}, title: {display: true, text: '°C', color: '#f85149'}},
+      },
+      plugins: {legend: {display: false}, tooltip: {filter: (item) => item.datasetIndex !== 6}},
+    },
+  });
+
+  document.querySelectorAll('#legend-7d input[type=checkbox]').forEach(cb => {
+    const idx = parseInt(cb.dataset.s, 10);
+    chart.data.datasets[idx].hidden = !cb.checked;
+    cb.addEventListener('change', () => {
+      chart.data.datasets[idx].hidden = !cb.checked;
+      chart.update();
+    });
+  });
+
+  async function refresh() {
+    try {
+      const r = await fetch('/api/chart/7d');
+      const j = await r.json();
+      chart.data.datasets[0].data = j.bms_hourly.map(p => ({x: p.t, y: p.v}));
+      chart.data.datasets[1].data = j.bms_hourly.map(p => ({x: p.t, y: p.i}));
+      chart.data.datasets[2].data = j.bms_hourly.map(p => ({x: p.t, y: p.soc}));
+      chart.data.datasets[3].data = j.bms_hourly.map(p => ({x: p.t, y: p.soc_min}));
+      chart.data.datasets[4].data = j.bms_hourly.map(p => ({x: p.t, y: p.soc_max}));
+      chart.data.datasets[5].data = j.bms_hourly.map(p => ({x: p.t, y: p.temp}));
+      chart.data.datasets[6].data = (j.mains || []).map(p => ({x: p.t, y: p.on ? 0 : 100}));
+      chart.update();
+
+      const s = j.stats || {};
+      const cs = j.charger_states || {};
+      const fmt = (x, d=2) => (x == null) ? '—' : x.toFixed(d);
+      const rows = [
+        ['Samples',        s.n ?? 0],
+        ['Voltage',        `min ${fmt(s.v_min)} · max ${fmt(s.v_max)} · avg ${fmt(s.v_avg)} V`],
+        ['SoC range',      `${s.s_min ?? '—'}% … ${s.s_max ?? '—'}%`],
+        ['Temperature',    (s.t_min == null) ? '—' : `min ${fmt(s.t_min, 1)} · max ${fmt(s.t_max, 1)} °C`],
+        ['Cycles',         `${s.c_start ?? '—'} → ${s.c_end ?? '—'}  (+${(s.c_end ?? 0) - (s.c_start ?? 0)})`],
+        ['Charger states', Object.entries(cs).map(([k,v])=>`${k}: ${v}`).join(' · ') || '—'],
+      ];
+      document.getElementById('stats-body').innerHTML =
+        '<table class="stats">' + rows.map(([k,v])=>`<tr><th>${k}</th><td>${v}</td></tr>`).join('') + '</table>';
+    } catch (e) { console.error('week refresh failed', e); }
+  }
+  refresh();
+  setInterval(refresh, 300000);  // 5 min
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% macro badge(cls, label) %}<span class="badge badge-{{ cls }}">{{ label }}</span>{% endmacro %}
+
+<div class="snap-row">
+  <div class="big-card mains-{{ mains.state }}">
+    <div class="label">Mains power</div>
+    {% if mains.state == 'off' %}
+      <div class="value bad">LOST</div>
+      <div class="sub">for {{ mains.since_ago }} · since {{ mains.since_local }}</div>
+    {% elif mains.state == 'on' %}
+      <div class="value ok">ON</div>
+      <div class="sub">for {{ mains.since_ago }} · last outage: {{ mains.last_outage }}</div>
+    {% else %}
+      <div class="value muted">unknown</div>
+      <div class="sub">{{ mains.assessment or 'waiting for first charger sample' }}</div>
+    {% endif %}
+    <div class="sub tiny" title="{{ mains.assessment }}">{{ mains.assessment[:90] }}{% if mains.assessment|length > 90 %}…{% endif %}</div>
+  </div>
+
+  {% if bms %}
+  <div class="big-card">
+    <div class="label">State of charge</div>
+    <div class="value soc-{{ bms.soc_cls }}">{{ bms.soc_pct }}%</div>
+    <div class="sub">{{ bms.residual_ah|round(1) }} / ~280 Ah</div>
+  </div>
+  <div class="big-card">
+    <div class="label">Pack</div>
+    <div class="value">{{ "%.2f"|format(bms.pack_voltage) }} V</div>
+    <div class="sub">
+      {{ "%+.2f"|format(bms.pack_current) }} A ·
+      {{ "%+.0f"|format(bms.power_w) }} W ·
+      {% if bms.temp_c is not none %}{{ "%.1f"|format(bms.temp_c) }} °C{% else %}—{% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="big-card"><div class="label">BMS</div><div class="value bad">no data</div></div>
+  {% endif %}
+
+  {% if chg %}
+  <div class="big-card">
+    <div class="label">Charger</div>
+    <div class="value">{{ chg.state or 'unknown' }}</div>
+    <div class="sub">
+      {{ "%.2f"|format(chg.voltage or 0) }} V @ {{ "%.2f"|format(chg.current or 0) }} A
+      {% if chg.error and chg.error != 'NO_ERROR' %} · {{ badge('bad', chg.error) }}{% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="big-card"><div class="label">Charger</div><div class="value bad">no data</div></div>
+  {% endif %}
+
+  <div class="big-card">
+    <div class="label">Last seen</div>
+    <div class="sub">BMS: {% if bms %}{{ bms.age }}{% else %}—{% endif %}</div>
+    <div class="sub">Charger: {% if chg %}{{ chg.age }}{% else %}—{% endif %}</div>
+    <div class="sub">UPS: {{ mains.ups }}</div>
+    {% if mains.state == 'off' %}{{ badge('bad', 'MAINS LOST') }}{% endif %}
+  </div>
+</div>
+
+{% if bms %}
+<div class="snap-row">
+  <div class="card">
+    <h3>Cells</h3>
+    <table class="cells">
+      {% for v in bms.cells %}
+      <tr>
+        <th>C{{ loop.index }}</th>
+        <td>{{ "%.3f"|format(v) }} V</td>
+        <td class="bar"><span style="width: {{ ((v - 3.0) / 0.5 * 100)|round(0) }}%"></span></td>
+        <td>{% if bms.balancing[loop.index0] %}<span class="badge badge-warn">balancing</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    <div class="sub">Spread: {{ bms.spread_mv }} mV</div>
+  </div>
+  <div class="card">
+    <h3>State</h3>
+    <ul class="kv">
+      <li><span>Charge FET</span><b class="{{ 'ok' if bms.charge_fet else 'bad' }}">{{ 'ON' if bms.charge_fet else 'OFF' }}</b></li>
+      <li><span>Discharge FET</span><b class="{{ 'ok' if bms.discharge_fet else 'bad' }}">{{ 'ON' if bms.discharge_fet else 'OFF' }}</b></li>
+      <li><span>Cycles</span><b>{{ bms.cycle_count }}</b></li>
+      <li><span>Protections</span>
+        {% if bms.protections %}
+          {% for p in bms.protections %}{{ badge('bad', p) }} {% endfor %}
+        {% else %}<b class="ok">none</b>{% endif %}
+      </li>
+      <li><span>Updated</span><b>{{ bms.ts_local }}</b></li>
+    </ul>
+  </div>
+</div>
+{% endif %}

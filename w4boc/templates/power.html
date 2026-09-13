@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block page_title %}Power{% endblock %}
+{% block content %}
+
+<section class="card">
+  <h2>Mains power history</h2>
+  <p class="tiny muted">
+    How it is detected: the Victron charger runs from mains and stops advertising over Bluetooth
+    the instant AC drops, while the battery-powered BMS keeps answering (proving Bluetooth itself
+    is fine). Charger silent for {{ cfg_fast }} min → one Bluetooth restart to rule out a stuck
+    scanner → still silent {{ cfg_fast }} min later → <b>MAINS LOST</b>. A charger advertisement
+    ends the outage. If the PC is on a USB-connected UPS, Windows reports AC loss instantly.
+    A reboot after a gap with an "unexpected shutdown" in the Windows log is recorded as
+    <b>PC down</b> (the PC itself lost power).
+  </p>
+  <div id="mains-history"
+       hx-get="/partials/mains_history?days=90"
+       hx-trigger="load, every 30s"
+       hx-swap="innerHTML">
+    <p class="muted">loading…</p>
+  </div>
+</section>
+
+{% endblock %}

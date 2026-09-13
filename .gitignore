@@ -1,0 +1,24 @@
+# --- site-specific / secret ---
+secrets.toml
+config.toml
+*.db
+*.db-wal
+*.db-shm
+logs/
+updates/
+heartbeat.json
+
+# --- python ---
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# --- vendor datasheets (large PDFs kept locally only) ---
+docs/*.pdf
+
+# --- misc ---
+.claude/
+*.zip
+Thumbs.db

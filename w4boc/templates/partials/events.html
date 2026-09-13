@@ -1,0 +1,17 @@
+<h3>Recent events</h3>
+{% if events %}
+<table class="events">
+  <tbody>
+  {% for e in events %}
+  <tr>
+    <td class="ts">{{ e.ts_local }}</td>
+    <td><span class="badge badge-{{ 'bad' if e.severity == 'urgent' else 'warn' if e.severity == 'warn' else 'ok' }}">{{ e.severity }}</span></td>
+    <td class="kind">{{ e.kind }}</td>
+    <td class="detail">{{ e.detail }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No events yet.</p>
+{% endif %}

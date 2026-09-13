@@ -1,0 +1,5 @@
+bleak>=0.21
+victron-ble>=0.9
+flask>=3.0
+waitress>=3.0
+tzdata>=2024.1

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block page_title %}Live{% endblock %}
+{% block content %}
+
+<section id="snapshot"
+         hx-get="/partials/snapshot"
+         hx-trigger="load, every 5s"
+         hx-swap="innerHTML">
+  <p class="muted">loading…</p>
+</section>
+
+<section class="card">
+  <h2>Last 24 hours</h2>
+  <div class="chart-legend" id="legend-24">
+    <label><input type="checkbox" data-s="2" checked><span class="swatch dash" style="color:#3fb950"></span>SoC %</label>
+    <label><input type="checkbox" data-s="0" checked><span class="swatch" style="color:#58a6ff"></span>Battery V</label>
+    <label><input type="checkbox" data-s="1" checked><span class="swatch" style="color:#d29922"></span>Battery A</label>
+    <label><input type="checkbox" data-s="4"><span class="swatch thin" style="color:#f85149"></span>Charger A</label>
+    <label><input type="checkbox" data-s="3"><span class="swatch thin" style="color:#b392f0"></span>Charger V</label>
+    <label><input type="checkbox" data-s="5" checked><span class="swatch fill" style="color:#f85149"></span>Mains lost</label>
+  </div>
+  <div class="chart-container"><canvas id="chart24"></canvas></div>
+</section>
+
+<div class="grid-2">
+  <section id="events"
+           class="card"
+           hx-get="/partials/events"
+           hx-trigger="load, every 15s"
+           hx-swap="innerHTML">
+    <p class="muted">loading events…</p>
+  </section>
+
+  <div>
+    <div id="action-result" class="action-result"></div>
+    <section id="system"
+             class="card"
+             hx-get="/partials/system"
+             hx-trigger="load, every 10s"
+             hx-swap="innerHTML">
+      <p class="muted">loading system…</p>
+    </section>
+
+    <section id="tailscale"
+             class="card"
+             hx-get="/partials/tailscale"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+      <p class="muted">loading tailscale…</p>
+    </section>
+  </div>
+</div>
+
+<script>
+(function() {
+  const ctx = document.getElementById('chart24').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {datasets: [
+      {label: 'Battery V', yAxisID: 'v',   borderColor: '#58a6ff', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 1.5, stepped: 'before', data: []},
+      {label: 'Battery A', yAxisID: 'i',   borderColor: '#d29922', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 1.5, stepped: 'before', data: []},
+      {label: 'SoC %',     yAxisID: 'soc', borderColor: '#3fb950', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 3,   borderDash: [6,4], stepped: 'before', data: []},
+      {label: 'Charger V', yAxisID: 'v',   borderColor: '#b392f0', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 1, stepped: 'before', hidden: true, data: []},
+      {label: 'Charger A', yAxisID: 'i',   borderColor: '#f85149', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 1, stepped: 'before', hidden: true, data: []},
+      {label: 'Mains lost', yAxisID: 'soc', borderColor: 'rgba(248,81,73,0.0)', backgroundColor: 'rgba(248,81,73,0.18)', fill: 'origin', pointRadius: 0, borderWidth: 0, stepped: 'before', data: []},
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: {mode: 'index', intersect: false},
+      scales: {
+        x:   {type: 'time', time: {tooltipFormat: 'yyyy-MM-dd HH:mm'}, ticks: {color: '#7a8590', maxTicksLimit: 12, autoSkip: true}, grid: {color: '#2a323c'}},
+        v:   {position: 'left',  min: 12.0, max: 14.7, ticks: {color: '#58a6ff'}, grid: {color: '#2a323c'}, title: {display: true, text: 'V', color: '#58a6ff'}},
+        i:   {position: 'right', suggestedMin: -10, suggestedMax: 20, ticks: {color: '#d29922'}, grid: {drawOnChartArea: false}, title: {display: true, text: 'A', color: '#d29922'}},
+        soc: {position: 'right', offset: true, min: 0, max: 100, ticks: {color: '#3fb950'}, grid: {drawOnChartArea: false}, title: {display: true, text: '%', color: '#3fb950'}},
+      },
+      plugins: {legend: {display: false}, tooltip: {filter: (item) => item.datasetIndex !== 5}},
+    },
+  });
+
+  document.querySelectorAll('#legend-24 input[type=checkbox]').forEach(cb => {
+    const idx = parseInt(cb.dataset.s, 10);
+    chart.data.datasets[idx].hidden = !cb.checked;
+    cb.addEventListener('change', () => {
+      chart.data.datasets[idx].hidden = !cb.checked;
+      chart.update();
+    });
+  });
+
+  async function refresh() {
+    try {
+      const r = await fetch('/api/chart/24h');
+      const j = await r.json();
+      chart.data.datasets[0].data = j.bms.map(p => ({x: p.t, y: p.v}));
+      chart.data.datasets[1].data = j.bms.map(p => ({x: p.t, y: p.i}));
+      chart.data.datasets[2].data = j.bms.map(p => ({x: p.t, y: p.soc}));
+      chart.data.datasets[3].data = j.charger.map(p => ({x: p.t, y: p.v}));
+      chart.data.datasets[4].data = j.charger.map(p => ({x: p.t, y: p.i}));
+      // mains: 100 while lost (shaded band), 0 while on
+      chart.data.datasets[5].data = (j.mains || []).map(p => ({x: p.t, y: p.on ? 0 : 100}));
+      chart.update();
+    } catch (e) { console.error('chart refresh failed', e); }
+  }
+  refresh();
+  setInterval(refresh, 60000);
+})();
+</script>
+{% endblock %}

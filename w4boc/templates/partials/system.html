@@ -1,0 +1,51 @@
+<h3>Monitor</h3>
+<ul class="kv">
+  <li><span>Version</span><b>v{{ sysinfo.version }}</b></li>
+  <li><span>Up for</span><b>{{ sysinfo.uptime }}</b> </li>
+  <li><span>Started</span><b>{{ sysinfo.started_local }}</b></li>
+  <li><span>BLE restarts (24 h)</span><b class="{{ 'warn' if sysinfo.restarts_24h >= 8 else '' }}">{{ sysinfo.restarts_24h }}</b></li>
+  <li><span>Email</span><b class="{{ 'ok' if sysinfo.email else 'muted' }}">{{ 'enabled' if sysinfo.email else 'disabled' }}</b></li>
+  <li><span>APRS</span><b class="{{ 'ok' if sysinfo.aprs else 'muted' }}">{{ sysinfo.aprs_call if sysinfo.aprs else 'disabled' }}</b></li>
+  <li><span>Browser at start</span><b class="muted">{{ sysinfo.browser or '—' }}</b></li>
+</ul>
+
+<h3 class="mt">Updates</h3>
+{% if upd %}
+<ul class="kv">
+  <li><span>Latest release</span>
+    <b>{% if upd.latest %}v{{ upd.latest }}{% if upd.update_available %} <span class="badge badge-warn">newer</span>{% endif %}{% else %}—{% endif %}</b>
+  </li>
+  <li><span>Status</span><b class="{{ 'bad' if upd.status == 'error' else 'ok' if upd.status in ('up_to_date','ready') else '' }}">{{ upd.status.replace('_', ' ') }}</b></li>
+  <li><span>Last check</span><b class="muted">{{ upd.last_check or 'not yet' }}</b></li>
+  {% if upd.staged %}<li><span>Staged</span><b>v{{ upd.staged }}</b></li>{% endif %}
+</ul>
+{% if upd.message %}<p class="tiny muted">{{ upd.message }}</p>{% endif %}
+{% if upd.last_error %}<pre class="bad tiny">{{ upd.last_error }}</pre>{% endif %}
+<div class="btn-row">
+  <button hx-post="/api/update/check" hx-target="#action-result" hx-swap="innerHTML">Check for updates</button>
+  {% if upd.staged and upd.update_available %}
+  <button class="primary" hx-post="/api/update/install" hx-target="#action-result" hx-swap="innerHTML"
+          hx-confirm="Install v{{ upd.staged }} and restart the monitor now?">Install v{{ upd.staged }}</button>
+  {% endif %}
+  <button hx-post="/api/app/restart" hx-target="#action-result" hx-swap="innerHTML"
+          hx-confirm="Restart the monitor now? Telemetry pauses for ~20 s.">Restart monitor</button>
+</div>
+<p class="tiny muted">Releases: <a href="https://github.com/{{ sysinfo.repo }}/releases" target="_blank">github.com/{{ sysinfo.repo }}</a>
+  · auto-install {{ 'on' if auto_install else 'off' }}</p>
+{% else %}
+<p class="muted">Updater disabled.</p>
+{% endif %}
+
+{% if sysinfo.sim %}
+<h3 class="mt">Simulation</h3>
+<p class="tiny">mains {{ 'ON' if sysinfo.sim.mains_on else 'OFF' }} · scanner {{ 'alive' if sysinfo.sim.charger_ble else 'dead' }} · SoC {{ sysinfo.sim.soc }}% · UPS {{ sysinfo.sim.ac_line }}</p>
+<div class="btn-row">
+  <button hx-post="/api/sim/mains?on=0" hx-target="#action-result">Fake outage</button>
+  <button hx-post="/api/sim/mains?on=1" hx-target="#action-result">Restore mains</button>
+  <button hx-post="/api/sim/scanner?on=0" hx-target="#action-result">Kill scanner</button>
+  <button hx-post="/api/sim/scanner?on=1" hx-target="#action-result">Revive scanner</button>
+  <button hx-post="/api/sim/ups?ac=offline" hx-target="#action-result">UPS: AC off</button>
+  <button hx-post="/api/sim/ups?ac=unknown" hx-target="#action-result">UPS: none</button>
+</div>
+{% endif %}
+

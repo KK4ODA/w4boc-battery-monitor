@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ site }} Battery Monitor — {% block page_title %}{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='htmx.min.js') }}"></script>
+<script src="{{ url_for('static', filename='chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='chartjs-adapter-date-fns.bundle.min.js') }}"></script>
+<script>
+// ---- duplicate-tab guard -------------------------------------------------
+// The app opens this page at startup with ?autoopen=1 only when no tab has
+// checked in. Browsers that restore sessions can still bring back an old
+// tab; tabs talk over a BroadcastChannel and the NEWER auto-opened tab closes
+// itself when an older live tab answers. Manually opened tabs never close.
+(function () {
+  if (!('BroadcastChannel' in window)) return;
+  const auto = new URLSearchParams(location.search).has('autoopen');
+  const me = { id: Math.random().toString(36).slice(2), t: performance.timeOrigin };
+  const chan = new BroadcastChannel('w4boc-dashboard');
+  chan.onmessage = (ev) => {
+    const m = ev.data || {};
+    if (m.type === 'hello' && m.id !== me.id) {
+      chan.postMessage({ type: 'alive', id: me.id, t: me.t, to: m.id });
+    }
+    if (m.type === 'alive' && m.to === me.id && auto) {
+      const older = m.t < me.t || (m.t === me.t && m.id < me.id);
+      if (older) {
+        window.close();
+        setTimeout(() => {
+          const b = document.getElementById('dup-banner');
+          if (b) b.hidden = false;
+        }, 400);
+      }
+    }
+  };
+  chan.postMessage({ type: 'hello', id: me.id, t: me.t });
+})();
+
+// ---- reconnect banner ------------------------------------------------------
+// HTMX polls the server every few seconds; if the monitor restarts (watchdog,
+// update) the requests fail for ~15 s. Show a banner and keep polling.
+document.addEventListener('htmx:sendError', () => {
+  const b = document.getElementById('offline-banner'); if (b) b.hidden = false;
+});
+document.addEventListener('htmx:afterOnLoad', (ev) => {
+  if (ev.detail.xhr && ev.detail.xhr.status < 500) {
+    const b = document.getElementById('offline-banner'); if (b) b.hidden = true;
+  }
+});
+</script>
+</head>
+<body>
+<div id="dup-banner" class="banner warn" hidden>
+  This dashboard is already open in another tab. You can close this one.
+</div>
+<div id="offline-banner" class="banner bad" hidden>
+  Monitor not responding — it is probably restarting. Reconnecting…
+</div>
+<header>
+  <h1>{{ site }} Battery Monitor</h1>
+  <nav>
+    <a href="/"      class="{% if request.path == '/'      %}active{% endif %}">Live</a>
+    <a href="/week"  class="{% if request.path == '/week'  %}active{% endif %}">Last 7 days</a>
+    <a href="/power" class="{% if request.path == '/power' %}active{% endif %}">Power</a>
+    <a href="/logs"  class="{% if request.path == '/logs'  %}active{% endif %}">Logs</a>
+  </nav>
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+<footer>
+  <span>v{{ version }}{% if simulate %} · SIMULATION{% endif %} · auto-refresh active</span>
+</footer>
+</body>
+</html>
