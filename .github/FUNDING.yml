@@ -1,0 +1,4 @@
+# The "Sponsor" button. Kept in sync by tiles-on-the-air's
+# scripts/ham_tools/sync_funding.py; change the template there, not here.
+custom: ["https://tilesontheair.com/Giving", "https://paypal.me/facundofern"]
+buy_me_a_coffee: c3ghxrsuvc
